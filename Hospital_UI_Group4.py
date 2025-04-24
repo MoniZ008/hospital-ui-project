@@ -5,9 +5,10 @@ import seaborn as sns
 import plotly.express as px
 from sklearn.ensemble import RandomForestRegressor
 from sklearn.preprocessing import LabelEncoder
+from sklearn.model_selection import train_test_split
+from xgboost import XGBRegressor
 import numpy as np
-import joblib
-import xgboost as xgb
+
 
 # ------------------ Page Setup ------------------
 st.set_page_config(page_title="Hospital Bed and Resource Forecasting", layout="wide")
@@ -68,6 +69,66 @@ if all(col in df.columns for col in columns_needed):
     df["Hospital_Pressure_Category"] = df["inpatient_beds_utilization"].apply(categorize_hospital_pressure)
     df["Staffing_Crisis_Level"] = df["staffing_shortage_ratio"].apply(categorize_staffing)
     df["COVID_Burden_Level"] = df["percent_of_inpatients_with_covid"].apply(categorize_covid_burden)
+
+# ------------------ Train Models On The Fly ------------------
+@st.cache_resource
+def train_label_encoder(df):
+    le = LabelEncoder()
+    le.fit(df['state'])
+    return le
+
+@st.cache_resource
+def train_bed_utilization_model(df, _encoder):
+    df = df.copy()
+    df['state_encoded'] = _encoder.transform(df['state'])
+
+    required_cols = ['admission_rate', 'emergency_surge', 'staff_current_shortage',
+                     'staff_anticipated_shortage', 'available_beds']
+    for col in required_cols:
+        if col not in df.columns:
+            df[col] = 0  
+
+    features = [
+        'state_encoded', 'week_of_year', 'year', 'admission_rate',
+        'emergency_surge', 'staff_current_shortage',
+        'staff_anticipated_shortage', 'available_beds'
+    ]
+    df = df.dropna(subset=['inpatient_beds_utilization'])  
+    X = df[features]
+    y = df['inpatient_beds_utilization']
+
+    model = XGBRegressor()
+    model.fit(X, y)
+    return model
+
+@st.cache_resource
+def train_staff_shortage_model(df, _encoder):
+    df = df.copy()
+    df['state_encoded'] = _encoder.transform(df['state'])
+
+    required_cols = ['admission_rate', 'emergency_surge', 'staff_current_shortage',
+                     'staff_anticipated_shortage', 'available_beds']
+    for col in required_cols:
+        if col not in df.columns:
+            df[col] = 0
+
+    # Directly use staffing_shortage_ratio as target
+    df['target_staffing'] = df['critical_staffing_shortage_today_yes'] / (
+        df['critical_staffing_shortage_today_yes'] + df['critical_staffing_shortage_today_no']
+    )
+
+    df = df.dropna(subset=['target_staffing'])  # remove rows with NaN labels
+    features = [
+        'state_encoded', 'week_of_year', 'year', 'admission_rate',
+        'emergency_surge', 'staff_current_shortage',
+        'staff_anticipated_shortage', 'available_beds'
+    ]
+    X = df[features]
+    y = df['target_staffing']
+
+    model = XGBRegressor()
+    model.fit(X, y)
+    return model
 
 # ------------------ Navigation ------------------
 section = st.sidebar.radio("Navigation", ["Overview","Inpatient Bed Utilization", "Staffing Shortage Status", "Scenario Planning"])
@@ -199,9 +260,9 @@ elif section == "Inpatient Bed Utilization":
     # Prediction Map (Interactive)
     st.subheader("🔮 Predicted State-wise Bed Utilization (Interactive)")    
     weeks_ahead = st.slider("Weeks Ahead for Prediction:", min_value=1, max_value=8, value=3)
-    df['year'] = 2022  # placeholder year for modeling
-    le = LabelEncoder()
-    df['state_encoded'] = le.fit_transform(df['state'])
+    df['year'] = 2022  
+    _encoder = train_label_encoder(df)
+    df['state_encoded'] = _encoder.transform(df['state'])
 
     features = ['state_encoded', 'week_of_year', 'year']
     df_copy = df.copy()
@@ -212,12 +273,12 @@ elif section == "Inpatient Bed Utilization":
     X = model_df[features]
     y = model_df['target_util']
 
-    model = xgb.XGBRegressor(n_estimators=100, learning_rate=0.1, random_state=42)
+    model = XGBRegressor(n_estimators=100, learning_rate=0.1, random_state=42)
     model.fit(X, y)
 
     latest_week_data = df.groupby('state').tail(1).copy()
     latest_week_data['week_of_year'] += weeks_ahead
-    latest_week_data['state_encoded'] = le.transform(latest_week_data['state'])
+    latest_week_data['state_encoded'] = _encoder.transform(latest_week_data['state'])
     pred_input = latest_week_data[features]
     latest_week_data['predicted_util'] = model.predict(pred_input)
 
@@ -391,19 +452,15 @@ elif section == "Scenario Planning":
     confirmed = st.button("Confirm")
 
     if confirmed:
-        # Load model and encoder
-        model = joblib.load("scenario_xgb_model.pkl")
-        le = joblib.load("scenario_state_encoder.pkl")
+        _encoder = train_label_encoder(df)
+        model = train_bed_utilization_model(df, _encoder)
+        staff_model = train_staff_shortage_model(df, _encoder)
 
-        # Get latest week_of_year
         latest_week = df['week_of_year'].max()
-        year = 2022  # placeholder year
-
-        # Prepare input data
+        year = 2022
         factor_map = {"+10%": 0.1, "+20%": 0.2, "+30%": 0.3, "No Surge": 0.0}
         emergency_surge = factor_map.get(emergency_surge, 0.0)
 
-        # Apply to all states
         all_states = df['state'].unique()
         input_data = pd.DataFrame({
             'state': all_states,
@@ -416,7 +473,7 @@ elif section == "Scenario Planning":
             'available_beds': available_beds
         })
 
-        input_data['state_encoded'] = le.transform(input_data['state'])
+        input_data['state_encoded'] = _encoder.transform(input_data['state'])
         features = ['state_encoded', 'week_of_year', 'year', 'admission_rate',
                     'emergency_surge', 'staff_current_shortage',
                     'staff_anticipated_shortage', 'available_beds']
@@ -460,11 +517,7 @@ elif section == "Scenario Planning":
         st.plotly_chart(fig_scenario, use_container_width=True)
 
         # Load staff shortage model
-        staff_model = joblib.load("scenario_staff_model.pkl")
-
-        # Predict staffing shortage
-        X_input_staff = X_input.copy()  
-        input_data['predicted_staffing_shortage'] = staff_model.predict(X_input_staff)
+        input_data['predicted_staffing_shortage'] = staff_model.predict(X_input)
 
         # Staffing shortage choropleth
         fig_staff_scenario = px.choropleth(

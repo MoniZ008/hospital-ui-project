@@ -3,7 +3,7 @@ pandas
 matplotlib
 seaborn
 plotly
-scikit-learn==1.2.2
+scikit-learn
 joblib
-xgboost==1.7.5
+xgboost
 numpy

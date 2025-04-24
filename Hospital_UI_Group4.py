@@ -14,7 +14,7 @@ st.set_page_config(page_title="Hospital Bed and Resource Forecasting", layout="w
 st.image("uic.png", use_container_width=True)
 
 # ------------------ Load Data ------------------
-data_path = "/Users/monica/Desktop/MSBA/2025 Spring/IDS560/project-group4/weekly tasks/week14-0419/ui/COVID-19_Reported_Patient_Impact_and_Hospital_Capacity_by_State_Timeseries__RAW__20250220.csv"
+data_path = "COVID-19_Reported_Patient_Impact_and_Hospital_Capacity_by_State_Timeseries__RAW__20250220.csv"
 df = pd.read_csv(data_path)
 df['date'] = pd.to_datetime(df['date'], errors='coerce')
 df = df.dropna(subset=['date'])
@@ -392,8 +392,8 @@ elif section == "Scenario Planning":
 
     if confirmed:
         # Load model and encoder
-        model = joblib.load("./scenario_xgb_model.pkl")
-        le = joblib.load("./scenario_state_encoder.pkl")
+        model = joblib.load("scenario_xgb_model.pkl")
+        le = joblib.load("scenario_state_encoder.pkl")
 
         # Get latest week_of_year
         latest_week = df['week_of_year'].max()
@@ -460,7 +460,7 @@ elif section == "Scenario Planning":
         st.plotly_chart(fig_scenario, use_container_width=True)
 
         # Load staff shortage model
-        staff_model = joblib.load("./scenario_staff_model.pkl")
+        staff_model = joblib.load("scenario_staff_model.pkl")
 
         # Predict staffing shortage
         X_input_staff = X_input.copy()  

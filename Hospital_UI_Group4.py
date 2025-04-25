@@ -9,10 +9,15 @@ from sklearn.model_selection import train_test_split
 from xgboost import XGBRegressor
 import numpy as np
 
-
 # ------------------ Page Setup ------------------
 st.set_page_config(page_title="Hospital Bed and Resource Forecasting", layout="wide")
 st.image("uic.png", use_container_width=True)
+
+st.markdown("""
+<div style="background-color:#e8f4fd; padding:10px; border-radius:6px;">
+<b> 💻 Try desktop for best viewing!</b>
+</div>
+""", unsafe_allow_html=True)
 
 # ------------------ Load Data ------------------
 data_path = "COVID-19_Reported_Patient_Impact_and_Hospital_Capacity_by_State_Timeseries__RAW__20250220.csv"
@@ -112,7 +117,7 @@ def train_staff_shortage_model(df, _encoder):
         if col not in df.columns:
             df[col] = 0
 
-    # Directly use staffing_shortage_ratio as target
+    # Staffing_shortage_ratio as target
     df['target_staffing'] = df['critical_staffing_shortage_today_yes'] / (
         df['critical_staffing_shortage_today_yes'] + df['critical_staffing_shortage_today_no']
     )

@@ -145,13 +145,17 @@ if section == "Overview":
     # 1. Hospital Bed Utilization Over Time
     st.subheader("Hospital Bed Utilization Over Time")
     fig1, ax1 = plt.subplots(figsize=(12, 5))
-    sns.lineplot(data=df, x="date", y="inpatient_beds_utilization", label="Inpatient Bed Utilization")
-    sns.lineplot(data=df, x="date", y="staffing_shortage_ratio", label="Staffing Shortage Ratio", linestyle="dashed")
-    sns.lineplot(data=df, x="date", y="percent_of_inpatients_with_covid", label="% COVID Inpatients", linestyle="dotted")
+    ax1.clear()
+
+    sns.lineplot(data=df, x="date", y="inpatient_beds_utilization", label="Inpatient Bed Utilization", ax=ax1)
+    sns.lineplot(data=df, x="date", y="staffing_shortage_ratio", label="Staffing Shortage Ratio", linestyle="dashed", ax=ax1)
+    sns.lineplot(data=df, x="date", y="percent_of_inpatients_with_covid", label="% COVID Inpatients", linestyle="dotted", ax=ax1)
+
     ax1.set_ylabel("%")
     ax1.set_xlabel("Date")
     ax1.set_title("Hospital Utilization and Staffing Shortage Trends")
     ax1.legend()
+   
     st.pyplot(fig1)
 
     # 2. Average Daily COVID-19 Admissions by Age Group

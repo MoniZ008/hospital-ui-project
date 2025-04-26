@@ -14,8 +14,8 @@ st.set_page_config(page_title="Hospital Bed and Resource Forecasting", layout="w
 st.image("uic.png", use_container_width=True)
 
 st.markdown("""
-<div style="background-color:#e8f4fd; padding:10px; border-radius:6px;">
-<b> 💻 Try desktop for best viewing!</b>
+<div style="border: 2px solid #1a73e8; padding:10px; border-radius:6px; color:#1a73e8; background-color: rgba(230, 240, 255, 0.3); font-weight:600;">
+🖥️ Try desktop for best viewing!
 </div>
 """, unsafe_allow_html=True)
 

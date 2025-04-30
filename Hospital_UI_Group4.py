@@ -446,7 +446,7 @@ elif section == "Scenario Planning":
     st.header("💡 Scenario Planning")
     st.markdown("""
 > ℹ️ **Note:** This scenario module is designed for exploratory purposes.
-> The prediction is based on historical data patterns and does not dynamically reflect changes made to the conditions below.
+> Predictions are based on COVID-period data, so changing everyday conditions may not significantly affect the results.
 """)
 
     st.markdown("### Conditions")
